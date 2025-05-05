@@ -14,10 +14,11 @@ camera.rotation_x = 30
 
 lanes = [-6, -2, 2, 6]
 
-# Load road texture
-road_texture = load_texture('assets/waterTile43.png')  # <- replace with your file
+# Load textures
+road_texture = load_texture('assets/waterTile43.png')  # road texture
+tree_texture = load_texture('assets/tree.png')          # your tree image
 
-# Road tiles
+# Road segments
 road_segments = []
 for i in range(3):
     segment = Entity(
@@ -28,6 +29,29 @@ for i in range(3):
         collider=None
     )
     road_segments.append(segment)
+
+# Tree scenery segments (billboard-style)
+tree_rows_left = []
+tree_rows_right = []
+
+for i in range(3):
+    for offset in range(-45, 50, 15):
+        left_tree = Entity(
+            model='quad',
+            texture=tree_texture,
+            scale=(5, 10),
+            position=(-15, 5, i * 100 + offset),
+            billboard=True
+        )
+        right_tree = Entity(
+            model='quad',
+            texture=tree_texture,
+            scale=(5, 10),
+            position=(15, 5, i * 100 + offset),
+            billboard=True
+        )
+        tree_rows_left.append(left_tree)
+        tree_rows_right.append(right_tree)
 
 # Player car
 player = Entity(model='cube', color=color.azure, scale=(2, 1, 4), position=(0, 0, -10), collider='box')
@@ -92,9 +116,15 @@ def update():
     for segment in road_segments:
         segment.z -= time.dt * player.speed
         if segment.z + 50 < player.z:
-            segment.z += 300  # wrap to the front
+            segment.z += 300
 
-    # Spawn enemies
+    # Scroll trees and wrap
+    for tree in tree_rows_left + tree_rows_right:
+        tree.z -= time.dt * player.speed
+        if tree.z < player.z - 50:
+            tree.z += 300
+
+    # Enemies
     enemy_timer += time.dt
     if enemy_timer > 1.5:
         spawn_enemy()
