@@ -1,2 +1,2 @@
-pip install ursina
-pip install panda3d-gltf
+• pip install ursina
+• pip install panda3d-gltf
