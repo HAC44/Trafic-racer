@@ -14,9 +14,14 @@ camera.rotation_x = 30
 
 lanes = [-6, -2, 2, 6]
 
-# Load textures
-road_texture = load_texture('assets/waterTile43.png')  # road texture
-tree_texture = load_texture('assets/tree.png')          # your tree image
+# Load textures and model names
+road_texture = load_texture('assets/road.png')  # your road texture
+tree_model_path = 'assets/tree.glb'
+player_model_path = 'assets/car.glb'
+enemy_model_paths = [
+    'assets/car.glb',
+    # Add more here if needed
+]
 
 # Road segments
 road_segments = []
@@ -30,44 +35,35 @@ for i in range(3):
     )
     road_segments.append(segment)
 
-# Tree scenery segments (billboard-style)
-tree_rows_left = []
-tree_rows_right = []
-
+# Tree scenery using 3D models
+tree_entities = []
 for i in range(3):
     for offset in range(-45, 50, 15):
         left_tree = Entity(
-            model='quad',
-            texture=tree_texture,
-            scale=(5, 10),
-            position=(-15, 5, i * 100 + offset),
-            billboard=True
+            model=tree_model_path,
+            scale=6,
+            position=(-15, 0, i * 100 + offset),
+            collider=None
         )
-        right_tree = Entity(
-            model='quad',
-            texture=tree_texture,
-            scale=(5, 10),
-            position=(15, 5, i * 100 + offset),
-            billboard=True
-        )
-        tree_rows_left.append(left_tree)
-        tree_rows_right.append(right_tree)
+        right_tree = duplicate(left_tree, position=(15, 0, i * 100 + offset))
+        tree_entities.extend([left_tree, right_tree])
 
-# Player car
-player = Entity(model='cube', color=color.azure, scale=(2, 1, 4), position=(0, 0, -10), collider='box')
-player.speed = 5
+# Player car with .obj model
+player = Entity(model=player_model_path, scale=0.1, position=(0, -100, 0), collider='box')
+player.speed = 1
 player.max_speed = 12
-player.min_speed = 3
+player.min_speed = 1
 
 score = 0
 score_text = Text(f'Score: {score}', position=(-0.85, 0.45), scale=2, background=True)
 
+# Enemy cars
 class EnemyCar(Entity):
     def __init__(self, lane_x, z_pos):
+        model_path = choice(enemy_model_paths)
         super().__init__(
-            model='cube',
-            color=color.red,
-            scale=(2, 1, 4),
+            model=model_path,
+            scale=0.1,
             position=(lane_x, 0, z_pos),
             collider='box'
         )
@@ -112,14 +108,14 @@ def update():
     else:
         player.speed = min(player.max_speed, player.speed + 5 * time.dt)
 
-    # Scroll road and wrap segments
+    # Scroll road segments
     for segment in road_segments:
         segment.z -= time.dt * player.speed
         if segment.z + 50 < player.z:
             segment.z += 300
 
-    # Scroll trees and wrap
-    for tree in tree_rows_left + tree_rows_right:
+    # Scroll trees
+    for tree in tree_entities:
         tree.z -= time.dt * player.speed
         if tree.z < player.z - 50:
             tree.z += 300
