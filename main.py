@@ -1,4 +1,5 @@
 from ursina import *
+from ursina.shaders import unlit_shader
 from random import choice, uniform, random
 from ursina import lerp
 import random as pyrandom
@@ -24,20 +25,26 @@ num_lanes = 7  # 7 lanes, centered
 lane_gap = road_width / (num_lanes + 1)  # Slightly narrower lanes
 lanes = [(-road_width/2) + lane_gap + i*lane_gap for i in range(num_lanes)]
 
+# Define tree positions
+barrier_offset = 2  # Distance from road edge to barrier
+extra_tree_offset = 4
+left_tree_x = -road_width/2 - barrier_offset - extra_tree_offset
+right_tree_x = road_width/2 + barrier_offset + extra_tree_offset
+
 # Load textures and model names
 road_texture = load_texture('assets/road.png')
 barrier_model_path = 'assets/road_barrier.glb'
-player_model_path = 'assets/car.glb'
+player_model_path = 'assets/red_car.glb'
 enemy_model_paths = [
-    'assets/car.glb',
+    'assets/car_low.glb',
 ]
 
-# Remove skybox for now
-# sky = Sky(texture='assets/sky.jpg')
+# Add skybox
+sky = Sky(texture='assets/sky.jpg')
 
 # Add a brighter directional light for proper shading
-DirectionalLight(y=10, z=10, x=10, rotation=(45, -45, 45), color=color.white)
-AmbientLight(color=color.rgba(255,255,255,100))
+# DirectionalLight(y=10, z=10, x=10, rotation=(45, -45, 45), color=color.white)
+# AmbientLight(color=color.rgba(255,255,255,100))
 
 # Road segments (more for infinite look)
 road_segments = []
@@ -53,6 +60,62 @@ for i in range(num_road_segments):
         texture_scale=(1, 8)  # More frequent lane lines
     )
     road_segments.append(segment)
+
+# Add mountains in the background
+mountain_entities = []
+mountain_distance = 200  # Distance from road center
+mountain_spacing = 100   # Space between mountains
+for i in range(num_road_segments * 2):
+    z_pos = i * mountain_spacing
+    # Left mountains
+    left_mountain = Entity(
+        model='assets/mountain.glb',
+        scale=(uniform(5, 8), uniform(5, 8), uniform(5, 8)),
+        position=(-mountain_distance - uniform(0, 50), -5, z_pos),
+        rotation_y=uniform(0, 360)
+    )
+    # Right mountains
+    right_mountain = duplicate(left_mountain, 
+        position=(mountain_distance + uniform(0, 50), -5, z_pos),
+        scale=(uniform(5, 8), uniform(5, 8), uniform(5, 8))
+    )
+    mountain_entities.extend([left_mountain, right_mountain])
+
+# Add clouds
+cloud_entities = []
+cloud_height = 50
+cloud_spacing = 40
+for i in range(num_road_segments * 3):
+    z_pos = i * cloud_spacing
+    cloud = Entity(
+        model='sphere',
+        scale=(uniform(10, 20), uniform(5, 10), uniform(10, 20)),
+        position=(uniform(-100, 100), cloud_height, z_pos),
+        color=color.white,
+        texture='white_cube',
+        texture_scale=(1, 1)
+    )
+    cloud_entities.append(cloud)
+
+# Add decorative elements (rocks, bushes) along the road
+decorative_entities = []
+decor_spacing = 15
+for i in range(num_road_segments):
+    z_base = i * road_length
+    for z_offset in range(0, road_length, decor_spacing):
+        # Left side decorations
+        left_decor = Entity(
+            model='cube',
+            scale=(uniform(1, 2), uniform(1, 2), uniform(1, 2)),
+            position=(left_tree_x + uniform(-5, -2), 0, z_base + z_offset + uniform(-2, 2)),
+            color=color.gray,
+            rotation_y=uniform(0, 360)
+        )
+        # Right side decorations
+        right_decor = duplicate(left_decor,
+            position=(right_tree_x + uniform(2, 5), 0, z_base + z_offset + uniform(-2, 2))
+        )
+        decorative_entities.extend([left_decor, right_decor])
 
 # Barriers (sync with road segments)
 barrier_entities = []
@@ -80,19 +143,22 @@ grass = Entity(
     color=color.white
 )
 
-# Player car as a larger cube, free movement
+# Player car
 player = Entity(
-    model='cube',
-    scale=(2.5, 1, 2),
-    position=(0, 0.5, 0),  # Start at center
-    color=color.yellow,
-    collider='box'
+    model=player_model_path,
+    scale=(0.1, 0.1, 0.1),
+    position=(0, 0.5, 0),
+    collider='box',
+    rotation_y=180
 )
 player.speed = 5
 player.max_speed = 12
 player.min_speed = 3
 player.base_speed = 5
 
+print("The player texture is: ", player.texture)
+print("The player model is: ", player.model)
+print("The player color is: ", player.color)
 # Score and speed display
 score = 0
 score_text = Text(f'Score: {score}', position=(-0.85, 0.45), scale=2, background=True)
@@ -104,15 +170,16 @@ def update_speed_display():
 def update_score_display():
     score_text.text = f'Score: {score}'
 
-# Enemy cars as larger cubes
+# Enemy cars
 class EnemyCar(Entity):
     def __init__(self, lane_x, z_pos):
         super().__init__(
-            model='cube',
-            scale=(2.5, 1, 2),
+            model=enemy_model_paths[0],
+            scale=(1.2, 1.2, 1.2),
             position=(lane_x, 0.5, z_pos),
             collider='box',
-            color=color.cyan
+            rotation_y=180,
+            shader=unlit_shader
         )
         self.speed = uniform(3, 6)
         self.overtaken = False
@@ -142,12 +209,6 @@ enemy_timer = 0
 lane_change_cooldown = 0
 
 # Add dense rows of trees along both sides of the road, well outside the barriers
-barrier_offset = 2  # Distance from road edge to barrier
-# Add extra offset to place trees further from the road
-extra_tree_offset = 4
-left_tree_x = -road_width/2 - barrier_offset - extra_tree_offset
-right_tree_x = road_width/2 + barrier_offset + extra_tree_offset
-
 tree_entities = []
 for i in range(num_road_segments):
     z_base = i * road_length
@@ -242,5 +303,33 @@ def update():
                 tree.x = right_tree_x + pyrandom.uniform(-1, 1)
             tree.scale = pyrandom.uniform(3.0, 4.0)
             tree.rotation_y = pyrandom.uniform(0, 360)
+
+    # Update mountains
+    for mountain in mountain_entities:
+        mountain.z -= time.dt * player.speed
+        if mountain.z < player.z - CAMERA_DISTANCE - 100:
+            mountain.z += num_road_segments * mountain_spacing
+            mountain.x = mountain_distance * (1 if mountain.x > 0 else -1) + uniform(-50, 50)
+            mountain.scale = (uniform(5, 8), uniform(5, 8), uniform(5, 8))
+
+    # Update clouds
+    for cloud in cloud_entities:
+        cloud.z -= time.dt * player.speed
+        if cloud.z < player.z - CAMERA_DISTANCE - 100:
+            cloud.z += num_road_segments * cloud_spacing
+            cloud.x = uniform(-100, 100)
+            cloud.scale = (uniform(10, 20), uniform(5, 10), uniform(10, 20))
+
+    # Update decorative elements
+    for decor in decorative_entities:
+        decor.z -= time.dt * player.speed
+        if decor.z < player.z - CAMERA_DISTANCE - 20:
+            decor.z += num_road_segments * road_length
+            if decor.x < 0:
+                decor.x = left_tree_x + uniform(-5, -2)
+            else:
+                decor.x = right_tree_x + uniform(2, 5)
+            decor.scale = (uniform(1, 2), uniform(1, 2), uniform(1, 2))
+            decor.rotation_y = uniform(0, 360)
 
 app.run()
