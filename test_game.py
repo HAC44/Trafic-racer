@@ -5,8 +5,8 @@ app = Ursina()
 EditorCamera()  # <-- adds WASD + mouse orbit control
 
 car = Entity(
-    model='assets/car.glb',
-    scale=0.03,
+    model='assets/race.glb',
+    scale=1.2,
     origin_y=-1,  # Shift pivot up
     position=(0, 0, 0),
     collider='box',
