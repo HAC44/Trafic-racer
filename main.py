@@ -91,14 +91,30 @@ print("The player model is: ", player.model)
 print("The player color is: ", player.color)
 # Score and speed display
 score = 0
-score_text = Text(f'Score: {score}', position=(-0.85, 0.45), scale=2, background=True)
-speed_text = Text(f'Speed: {int(player.speed * 20)} km/h', position=(-0.85, 0.35), scale=2, background=True)
+score_text = Text(
+    f'Score: {score}',
+    position=(-0.84, 0.45),
+    scale=1.5,
+    background=True,
+    background_color=color.rgba(0,0,0,0.5),
+    color=color.white
+)
+speed_text = Text(
+    f'Speed: {int(player.speed * 20)} km/h',
+    position=(-0.84, 0.32),
+    scale=1.5,
+    background=True,
+    background_color=color.rgba(0,0,0,0.5),
+    color=color.white
+)
 
 def update_speed_display():
-    speed_text.text = f'Speed: {int(player.speed * 20)} km/h'
+    if current_state == PLAYING:  # Only update if game is active
+        speed_text.text = f'Speed: {int(player.speed * 20)} km/h'
 
 def update_score_display():
-    score_text.text = f'Score: {score}'
+    if current_state == PLAYING:  # Only update if game is active
+        score_text.text = f'Score: {score}'
 
 # Game states
 MENU = 0
@@ -125,17 +141,45 @@ def create_menu():
     global menu_entities
     menu_entities = []
     
+    # Background panel
+    panel = Entity(
+        model='quad',
+        scale=(1.2, 0.8),
+        position=(0, 0, 0),
+        color=color.rgba(0,0,0,0.7),
+        texture='white_cube'
+    )
+    menu_entities.append(panel)
+    
     # Title
-    title = Text('Traffic Racer 3D', position=(0, 0.3), scale=3, origin=(0, 0))
+    title = Text(
+        'Traffic Racer 3D',
+        position=(0, 0.3),
+        scale=3,
+        origin=(0, 0),
+        color=color.white
+    )
     menu_entities.append(title)
     
     # Start button
-    start_button = Button(text='Start Game', position=(0, 0), scale=(0.3, 0.1))
+    start_button = Button(
+        text='Start Game',
+        position=(0, 0),
+        scale=(0.3, 0.1),
+        color=color.rgba(0.2,0.6,0.2,1),
+        highlight_color=color.rgba(0.3,0.7,0.3,1),
+        pressed_color=color.rgba(0.1,0.5,0.1,1)
+    )
     start_button.on_click = start_game
     menu_entities.append(start_button)
     
     # High score display
-    high_score_text = Text(f'High Score: {high_score}', position=(0, -0.2), scale=2)
+    high_score_text = Text(
+        f'High Score: {high_score}',
+        position=(0, -0.2),
+        scale=2,
+        color=color.white
+    )
     menu_entities.append(high_score_text)
 
 def create_game_over_screen():
@@ -145,20 +189,53 @@ def create_game_over_screen():
     
     game_over_entities = []
     
+    # Background panel
+    panel = Entity(
+        model='quad',
+        scale=(1.2, 0.8),
+        position=(0, 0, 0),
+        color=color.rgba(0,0,0,0.7),
+        texture='white_cube'
+    )
+    game_over_entities.append(panel)
+    
     # Game Over text
-    game_over_text = Text('Game Over!', position=(0, 0.3), scale=3, origin=(0, 0))
+    game_over_text = Text(
+        'Game Over!',
+        position=(0, 0.3),
+        scale=3,
+        origin=(0, 0),
+        color=color.red
+    )
     game_over_entities.append(game_over_text)
     
     # Score display
-    score_display = Text(f'Score: {score}', position=(0, 0.1), scale=2)
+    score_display = Text(
+        f'Score: {score}',
+        position=(0, 0.1),
+        scale=2,
+        color=color.white
+    )
     game_over_entities.append(score_display)
     
     # High score display
-    high_score_display = Text(f'High Score: {high_score}', position=(0, -0.1), scale=2)
+    high_score_display = Text(
+        f'High Score: {high_score}',
+        position=(0, -0.1),
+        scale=2,
+        color=color.white
+    )
     game_over_entities.append(high_score_display)
     
     # Try again button
-    try_again_button = Button(text='Try Again', position=(0, -0.3), scale=(0.3, 0.1))
+    try_again_button = Button(
+        text='Try Again',
+        position=(0, -0.3),
+        scale=(0.3, 0.1),
+        color=color.rgba(0.2,0.6,0.2,1),
+        highlight_color=color.rgba(0.3,0.7,0.3,1),
+        pressed_color=color.rgba(0.1,0.5,0.1,1)
+    )
     try_again_button.on_click = restart_game
     game_over_entities.append(try_again_button)
 
@@ -177,9 +254,9 @@ def hide_game_over():
 def start_game():
     global current_state, score, player, enemy_cars
     hide_menu()
-    hide_game_over()  # Make sure to hide game over screen when starting
+    hide_game_over()
     current_state = PLAYING
-    score = 0
+    score = 0  # Reset score
     update_score_display()
     
     # Reset player position
@@ -190,9 +267,13 @@ def start_game():
     for car in enemy_cars:
         destroy(car)
     enemy_cars.clear()
+    
+    # Re-enable score and speed display
+    score_text.enable()
+    speed_text.enable()
 
 def game_over():
-    global current_state, high_score
+    global current_state, high_score, score
     current_state = GAME_OVER
     
     # Update high score if needed
@@ -200,12 +281,23 @@ def game_over():
         high_score = score
         save_high_score(high_score)
     
+    # Hide score and speed display during game over
+    score_text.disable()
+    speed_text.disable()
+    
     create_game_over_screen()
 
 def restart_game():
-    global current_state
+    global current_state, score
     current_state = PLAYING
+    score = 0  # Reset score
+    update_score_display()  # Update display with new score
     hide_game_over()
+    
+    # Re-enable score and speed display
+    score_text.enable()
+    speed_text.enable()
+    
     start_game()
 
 # Initialize menu
@@ -260,22 +352,27 @@ background_tree_textures = [
     'assets/foliagePack_011.png',
 ]
 
-background_trees = []
 num_background_trees = 40
-background_tree_min_x = road_width / 2 + 2  # 2 units away from road edge
-background_tree_max_x = 60  # How far from road center to place trees
-visible_tree_range_behind = 100
-visible_tree_range_ahead = 200
-for _ in range(num_background_trees):
-    side = choice([-1, 1])  # left or right
+background_tree_min_x = road_width / 2
+background_tree_max_x = 25
+visible_tree_range_behind = 20
+visible_tree_range_ahead = 80
+
+# Initialize trees with uneven spacing
+background_trees = []
+for i in range(num_background_trees):
+    side = choice([-1, 1])
     x = side * uniform(background_tree_min_x, background_tree_max_x)
-    z = uniform(0, 300)  # Initial z, will be repositioned in update
+    # Create uneven spacing by using random intervals
+    z = player.z - visible_tree_range_behind + uniform(0, visible_tree_range_ahead + visible_tree_range_behind)
+    # Add some random variation to the scale
+    scale_factor = uniform(0.8, 1.2)
     texture = choice(background_tree_textures)
     tree = Entity(
         model='quad',
         texture=texture,
         position=(x, 0.5, z),
-        scale=(4, 6, 1),  # Smaller trees
+        scale=(4 * scale_factor, 6 * scale_factor, 1),
         double_sided=True,
         billboard=True,
         color=color.white
@@ -335,13 +432,17 @@ def update():
     # Move and recycle background trees
     for tree in background_trees:
         tree.z -= time.dt * player.speed
+        # If tree is behind the player, move it to a new random position ahead
         if tree.z < player.z - visible_tree_range_behind:
-            # Recycle tree to a new position ahead
             side = choice([-1, 1])
             x = side * uniform(background_tree_min_x, background_tree_max_x)
-            z = player.z + visible_tree_range_ahead + uniform(0, 100)
+            # Add random spacing between trees
+            z = player.z + uniform(0, visible_tree_range_ahead)
+            # Randomly adjust scale for variety
+            scale_factor = uniform(0.8, 1.2)
             tree.x = x
             tree.z = z
+            tree.scale = (4 * scale_factor, 6 * scale_factor, 1)
             tree.texture = choice(background_tree_textures)
     
     # Enemies
